@@ -61,21 +61,20 @@ func main() {
 	}
 
 	for _, artifact := range artifacts.Artifacts {
-		split := strings.Split(*artifact.Name, "-")
-		project, version, platform, compiler, arch := split[0], split[1], split[2], split[3], split[4]
-		if project != "urde" || platformCompilerMap[platform] != compiler {
+		info := parseArtifactName(*artifact.Name)
+		if info.project != "urde" || platformCompilerMap[info.platform] != info.compiler {
 			continue
 		}
-		fmt.Println("Selected artifact", project, version, platform, compiler, arch)
-		baseDir := fmt.Sprintf("continuous/%s", platform)
-		name := fmt.Sprintf("%s-%s-%s-%s", project, version, platform, arch)
+		fmt.Println("Selected artifact", info.project, info.version, info.platform, info.compiler, info.arch)
+		baseDir := fmt.Sprintf("continuous/%s", info.platform)
+		name := fmt.Sprintf("%s-%s-%s-%s", info.project, info.version, info.platform, info.arch)
 
 		extension := ""
-		if platform == "win32" {
+		if info.platform == "win32" {
 			extension = "zip"
-		} else if platform == "linux" {
+		} else if info.platform == "linux" {
 			extension = "tar"
-		} else if platform == "macos" {
+		} else if info.platform == "macos" {
 			extension = "dmg"
 		}
 
@@ -91,7 +90,7 @@ func main() {
 		}
 
 		// Add to platform index file
-		platformIndex[platform] = append(platformIndex[platform], fmt.Sprintf("%s.%s", name, extension))
+		platformIndex[info.platform] = append(platformIndex[info.platform], fmt.Sprintf("%s.%s", name, extension))
 
 		// Check if artifact already exists in output
 		outPath := fmt.Sprintf("%s/%s.%s", baseDir, name, extension)
@@ -109,11 +108,11 @@ func main() {
 		}
 
 		found := false
-		if platform == "linux" {
+		if info.platform == "linux" {
 			found, err = writeLinuxTar(zr, name, baseDir)
-		} else if platform == "win32" {
+		} else if info.platform == "win32" {
 			found, err = writeWin32Zip(zr, name, baseDir)
-		} else if platform == "macos" {
+		} else if info.platform == "macos" {
 			found, err = writeMacosDmg(zr, name, baseDir)
 		}
 		if err != nil {
@@ -126,7 +125,7 @@ func main() {
 			fmt.Println("Artifact skipped")
 
 			// Remove from platform index
-			platformIndex[platform] = platformIndex[platform][:len(platformIndex[platform])-1]
+			platformIndex[info.platform] = platformIndex[info.platform][:len(platformIndex[info.platform])-1]
 
 			// Create .skip file
 			file, err := os.Create(skipFile)
@@ -344,4 +343,25 @@ func extractFile(file *zip.File, w io.Writer) error {
 		return err
 	}
 	return nil
+}
+
+type artifactInfo struct {
+	project  string
+	version  string
+	platform string
+	compiler string
+	arch     string
+}
+
+func parseArtifactName(name string) artifactInfo {
+	info := artifactInfo{}
+	split := strings.Split(name, "-")
+	if len(split) == 5 {
+		// urde-123-macos-appleclang-x86_64
+		info.project, info.version, info.platform, info.compiler, info.arch = split[0], split[1], split[2], split[3], split[4]
+	} else if len(split) == 6 {
+		// urde-v1.2.3-4-macos-appleclang-x86_64
+		info.project, info.version, info.platform, info.compiler, info.arch = split[0], split[1]+"-"+split[2], split[3], split[4], split[5]
+	}
+	return info
 }
