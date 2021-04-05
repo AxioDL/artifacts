@@ -50,7 +50,7 @@ func main() {
 	}
 
 	var platformCompilerMap = map[string]string{
-		"linux": "gcc",
+		"linux": "clang",
 		"macos": "appleclang",
 		"win32": "msvc",
 	}
@@ -213,7 +213,6 @@ func writeLinuxTar(zr *zip.Reader, name string, baseDir string) (bool, error) {
 		tw := tar.NewWriter(of)
 		for _, file := range zr.File {
 			if !strings.HasSuffix(file.Name, ".AppImage") {
-				fmt.Println("Unexpected file", file.Name)
 				continue
 			}
 
@@ -266,10 +265,10 @@ func writeWin32Zip(zr *zip.Reader, name string, baseDir string) (bool, error) {
 		})
 
 		for _, file := range zr.File {
-			if !strings.HasSuffix(file.Name, ".exe") && !strings.HasSuffix(file.Name, ".pdb") {
-				fmt.Println("Unexpected file", file.Name)
+			if !strings.HasSuffix(file.Name, ".exe") {
 				continue
 			}
+
 			hdr := zip.FileHeader{
 				Name:               file.Name,
 				Modified:           file.Modified,
@@ -314,9 +313,9 @@ func writeMacosDmg(zr *zip.Reader, name string, baseDir string) (bool, error) {
 
 		for _, file := range zr.File {
 			if !strings.HasSuffix(file.Name, ".dmg") {
-				fmt.Println("Unexpected file", file.Name)
 				continue
 			}
+
 			if err := extractFile(file, of); err != nil {
 				return true, err
 			}
