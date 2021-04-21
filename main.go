@@ -22,7 +22,7 @@ const GITHUB_APP_ID = 105923
 const GITHUB_INSTALLATION_ID = 15502402
 
 const OWNER = "AxioDL"
-const REPO = "urde"
+const REPO = "metaforce"
 
 func main() {
 	ex, err := os.Executable()
@@ -62,7 +62,7 @@ func main() {
 
 	for _, artifact := range artifacts.Artifacts {
 		info := parseArtifactName(*artifact.Name)
-		if info.project != "urde" || platformCompilerMap[info.platform] != info.compiler {
+		if info.project != "metaforce" || platformCompilerMap[info.platform] != info.compiler {
 			continue
 		}
 		fmt.Println("Selected artifact", info.project, info.version, info.platform, info.compiler, info.arch)
@@ -212,6 +212,24 @@ func writeLinuxTar(zr *zip.Reader, name string, baseDir string) (bool, error) {
 
 		tw := tar.NewWriter(of)
 		for _, file := range zr.File {
+			// Extract debug file
+			if strings.HasPrefix(file.Name, "debug.") {
+				dof, err := createTempFile(baseDir)
+				if err != nil {
+					return true, err
+				}
+				if err := extractFile(file, dof); err != nil {
+					return true, err
+				}
+				if err := dof.Close(); err != nil {
+					return true, err
+				}
+				if err := finalizeTempFile(dof.Name(), fmt.Sprintf("%s/%s-debug.%s", baseDir, name, strings.Replace(file.Name, "debug.", "", 1))); err != nil {
+					return true, err
+				}
+				continue
+			}
+
 			if !strings.HasSuffix(file.Name, ".AppImage") {
 				continue
 			}
@@ -265,6 +283,24 @@ func writeWin32Zip(zr *zip.Reader, name string, baseDir string) (bool, error) {
 		})
 
 		for _, file := range zr.File {
+			// Extract debug file
+			if strings.HasPrefix(file.Name, "debug.") {
+				dof, err := createTempFile(baseDir)
+				if err != nil {
+					return true, err
+				}
+				if err := extractFile(file, dof); err != nil {
+					return true, err
+				}
+				if err := dof.Close(); err != nil {
+					return true, err
+				}
+				if err := finalizeTempFile(dof.Name(), fmt.Sprintf("%s/%s-debug.%s", baseDir, name, strings.Replace(file.Name, "debug.", "", 1))); err != nil {
+					return true, err
+				}
+				continue
+			}
+
 			if !strings.HasSuffix(file.Name, ".exe") {
 				continue
 			}
@@ -312,6 +348,24 @@ func writeMacosDmg(zr *zip.Reader, name string, baseDir string) (bool, error) {
 		}
 
 		for _, file := range zr.File {
+			// Extract debug file
+			if strings.HasPrefix(file.Name, "debug.") {
+				dof, err := createTempFile(baseDir)
+				if err != nil {
+					return true, err
+				}
+				if err := extractFile(file, dof); err != nil {
+					return true, err
+				}
+				if err := dof.Close(); err != nil {
+					return true, err
+				}
+				if err := finalizeTempFile(dof.Name(), fmt.Sprintf("%s/%s-debug.%s", baseDir, name, strings.Replace(file.Name, "debug.", "", 1))); err != nil {
+					return true, err
+				}
+				continue
+			}
+
 			if !strings.HasSuffix(file.Name, ".dmg") {
 				continue
 			}
@@ -356,10 +410,10 @@ func parseArtifactName(name string) artifactInfo {
 	info := artifactInfo{}
 	split := strings.Split(name, "-")
 	if len(split) == 5 {
-		// urde-123-macos-appleclang-x86_64
+		// metaforce-123-macos-appleclang-x86_64
 		info.project, info.version, info.platform, info.compiler, info.arch = split[0], split[1], split[2], split[3], split[4]
 	} else if len(split) == 6 {
-		// urde-v1.2.3-4-macos-appleclang-x86_64
+		// metaforce-v1.2.3-4-macos-appleclang-x86_64
 		info.project, info.version, info.platform, info.compiler, info.arch = split[0], split[1]+"-"+split[2], split[3], split[4], split[5]
 	}
 	return info
